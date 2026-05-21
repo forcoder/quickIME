@@ -3,6 +3,9 @@
 #include <fstream>
 #include <chrono>
 #include <cstring>
+#include <thread>
+#include <vector>
+#include <windows.h>
 
 // 条件编译：如果找到llama.cpp则使用真实实现，否则使用模拟实现
 #if __has_include(<llama.h) || defined(HAS_LLAMACPP)
