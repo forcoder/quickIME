@@ -1,0 +1,32 @@
+QuickInput Installer Version Information
+==========================================
+
+Project: QuickInput 智能五笔输入法
+Version: @PROJECT_VERSION@
+Build Date: @BUILD_DATE@
+Installer Version: @INSTALLER_VERSION@
+
+System Requirements:
+- Windows 7 SP1 or later
+- 4GB RAM minimum
+- 500MB disk space
+- Microsoft Visual C++ Redistributable
+
+Installation Path: @DEFAULT_INSTALL_DIR@
+
+Components:
+- QuickInput.exe (Main application)
+- config_panel.exe (Configuration panel)
+- quickinput_ime.dll (IME service)
+- Models directory
+- Resources directory
+
+Registry Keys Created:
+- HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\CTF\SystemShared\{B4F3A834-5C91-4E8D-8A7F-3D2C1E6A9F0B}
+- HKEY_CLASSES_ROOT\CLSID\{B4F3A834-5C91-4E8D-8A7F-3D2C1E6A9F0B}
+- HKEY_CURRENT_USER\SOFTWARE\QuickInput
+
+Uninstall Information:
+- Display Name: QuickInput 智能五笔输入法
+- Uninstall String: @UNINSTALL_COMMAND@
+- Registry Key: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\QuickInput

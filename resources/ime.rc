@@ -1,0 +1,60 @@
+#include "resource.h"
+
+// ═══════════════════════════════════════════════════════════════
+// Version Information
+// ═══════════════════════════════════════════════════════════════
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     1,0,0,0
+PRODUCTVERSION  1,0,0,0
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGS       0x0L
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_DLL
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"    // English (US), Unicode
+        BEGIN
+            VALUE "CompanyName",      "QuickInput Project"
+            VALUE "FileDescription",  "QuickInput Wubi Input Method"
+            VALUE "FileVersion",      "1.0.0.0"
+            VALUE "InternalName",     "quickinput_ime"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 QuickInput Project"
+            VALUE "OriginalFilename", "quickinput_ime.dll"
+            VALUE "ProductName",      "QuickInput"
+            VALUE "ProductVersion",   "1.0.0"
+        END
+        BLOCK "080404B0"    // Chinese (Simplified), Unicode
+        BEGIN
+            VALUE "CompanyName",      "QuickInput Project"
+            VALUE "FileDescription",  "QuickInput 五笖输入法"
+            VALUE "FileVersion",      "1.0.0.0"
+            VALUE "InternalName",     "quickinput_ime"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 QuickInput Project"
+            VALUE "OriginalFilename", "quickinput_ime.dll"
+            VALUE "ProductName",      "QuickInput"
+            VALUE "ProductVersion",   "1.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200, 0x0804, 1200
+    END
+END
+
+// ═══════════════════════════════════════════════════════════════
+// Icon Resources
+// ═══════════════════════════════════════════════════════════════
+// IDI_QUICKINPUT       ICON    "quickinput.ico"
+// IDI_QUICKINPUT_SMALL ICON    "quickinput_small.ico"
+
+// ═══════════════════════════════════════════════════════════════
+// String Table
+// ═══════════════════════════════════════════════════════════════
+STRINGTABLE
+BEGIN
+    IDS_APP_NAME          "QuickInput"
+    IDS_APP_DESCRIPTION   "QuickInput Wubi Input Method"
+    IDS_CLSID_DESCRIPTION "QuickInput Text Service"
+END
