@@ -188,6 +188,77 @@ std::vector<KbResult> KnowledgeBase::KeywordSearch(
     return results;
 }
 
+std::vector<KbResult> KnowledgeBase::HybridSearch(
+    const std::wstring& query,
+    int maxResults,
+    KbCategory filter,
+    float semanticWeight,
+    float keywordWeight) {
+
+    if (!m_impl->db) return {};
+
+    // 1. 语义检索获取候选集
+    auto semanticCandidates = Search(query, maxResults * 3, filter);
+
+    // 2. 关键词检索获取候选集
+    auto keywordCandidates = KeywordSearch(query, maxResults * 3);
+
+    // 3. 合并结果，按类别过滤
+    std::unordered_map<int64_t, KbResult> merged;
+    std::unordered_map<int64_t, float> scores;
+
+    // 添加语义检索结果
+    for (const auto& res : semanticCandidates) {
+        if (filter != KbCategory::General &&
+            static_cast<uint8_t>(filter) != static_cast<uint8_t>(res.entry.category)) {
+            continue;
+        }
+        merged[res.entry.id] = res;
+        scores[res.entry.id] = res.similarity * semanticWeight;
+    }
+
+    // 添加关键词检索结果并计算综合分数
+    for (const auto& res : keywordCandidates) {
+        if (filter != KbCategory::General &&
+            static_cast<uint8_t>(filter) != static_cast<uint8_t>(res.entry.category)) {
+            continue;
+        }
+        if (merged.find(res.entry.id) != merged.end()) {
+            // 已存在，累加关键词分数
+            scores[res.entry.id] += res.similarity * keywordWeight;
+        } else {
+            // 新条目
+            merged[res.entry.id] = res;
+            scores[res.entry.id] = res.similarity * keywordWeight;
+        }
+    }
+
+    // 4. 转换为结果列表并排序
+    std::vector<KbResult> results;
+    results.reserve(merged.size());
+    for (auto& [id, res] : merged) {
+        res.similarity = scores[id];
+        results.push_back(res);
+    }
+
+    std::sort(results.begin(), results.end(),
+        [](const KbResult& a, const KbResult& b) {
+            return a.similarity > b.similarity;
+        });
+
+    // 5. 截断结果
+    if (results.size() > static_cast<size_t>(maxResults)) {
+        results.resize(maxResults);
+    }
+
+    // 6. 更新使用计数
+    for (auto& res : results) {
+        IncrementUseCount(m_impl->db, res.entry.id);
+    }
+
+    return results;
+}
+
 bool KnowledgeBase::DeleteEntry(int64_t id) {
     if (!m_impl->db) return false;
     return DeleteEntryFromDb(m_impl->db, id);
@@ -590,6 +661,99 @@ bool KnowledgeBase::ImportText(const std::wstring& text, KbCategory category, co
     }
 
     return success;
+}
+
+// ── 混合检索实现 ──
+
+std::vector<KbResult> KnowledgeBase::HybridSearch(
+    const std::wstring& query,
+    int maxResults,
+    KbCategory filter,
+    float semanticWeight,
+    float keywordWeight) {
+
+    if (!m_impl->db) return {};
+
+    // 归一化权重
+    float totalWeight = semanticWeight + keywordWeight;
+    if (totalWeight <= 0.0f) {
+        semanticWeight = 0.7f;
+        keywordWeight = 0.3f;
+        totalWeight = 1.0f;
+    }
+    semanticWeight /= totalWeight;
+    keywordWeight /= totalWeight;
+
+    // 1. 语义检索（获取更多候选）
+    auto semanticResults = Search(query, maxResults * 3, filter);
+
+    // 2. 关键词检索
+    auto keywordResults = KeywordSearch(query, maxResults * 3);
+
+    // 3. 合并结果
+    struct ScoredResult {
+        KbEntry entry;
+        float semanticScore;
+        float keywordScore;
+        float finalScore;
+    };
+
+    std::map<int64_t, ScoredResult> merged;
+
+    // 添加语义检索结果
+    for (const auto& r : semanticResults) {
+        ScoredResult sr;
+        sr.entry = r.entry;
+        sr.semanticScore = r.similarity;
+        sr.keywordScore = 0.0f;
+        sr.finalScore = r.similarity * semanticWeight;
+        merged[r.entry.id] = sr;
+    }
+
+    // 合并关键词检索结果
+    for (const auto& r : keywordResults) {
+        auto it = merged.find(r.entry.id);
+        if (it != merged.end()) {
+            it->second.keywordScore = r.similarity;
+            it->second.finalScore += r.similarity * keywordWeight;
+        } else {
+            // 检查分类过滤
+            if (filter != KbCategory::General &&
+                static_cast<uint8_t>(filter) != static_cast<uint8_t>(r.entry.category)) {
+                continue;
+            }
+            ScoredResult sr;
+            sr.entry = r.entry;
+            sr.semanticScore = 0.0f;
+            sr.keywordScore = r.similarity;
+            sr.finalScore = r.similarity * keywordWeight;
+            merged[r.entry.id] = sr;
+        }
+    }
+
+    // 4. 排序并截断
+    std::vector<KbResult> results;
+    results.reserve(std::min(static_cast<int>(merged.size()), maxResults));
+
+    std::vector<std::pair<int64_t, float>> scored;
+    for (const auto& p : merged) {
+        scored.push_back({p.first, p.second.finalScore});
+    }
+
+    std::sort(scored.begin(), scored.end(),
+        [](const auto& a, const auto& b) { return a.second > b.second; });
+
+    int count = 0;
+    for (const auto& s : scored) {
+        if (count >= maxResults) break;
+        KbResult r;
+        r.entry = merged[s.first].entry;
+        r.similarity = s.second;
+        results.push_back(r);
+        count++;
+    }
+
+    return results;
 }
 
 } // namespace qi::knowledge

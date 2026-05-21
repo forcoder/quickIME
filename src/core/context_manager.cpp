@@ -274,4 +274,87 @@ int ContextManager::GetCaretPosition(HWND hwnd) const {
     return 0;
 }
 
+// ── 客服场景上下文实现 ──
+
+std::wstring ContextManager::ExtractConversationContext(int maxChars) const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_context.surroundingText.empty()) {
+        return L"";
+    }
+
+    // 提取光标前后的文本作为对话上下文
+    std::wstring context = GetTextAroundCursor(maxChars / 2, maxChars / 2);
+
+    // 如果上下文太短，尝试获取更多文本
+    if (context.size() < static_cast<size_t>(maxChars / 2)) {
+        context = m_context.surroundingText;
+        if (context.size() > static_cast<size_t>(maxChars)) {
+            context = context.substr(context.size() - maxChars);
+        }
+    }
+
+    return context;
+}
+
+ContextManager::DialogMode ContextManager::DetectDialogMode(const std::wstring& text) const {
+    // 关键词匹配识别对话模式
+    static const std::vector<std::pair<DialogMode, std::vector<std::wstring>>> keywords = {
+        {DialogMode::Complaint, {L"投诉", L"不满意", L"差评", L"举报", L"欺骗", L"虚假宣传", L"态度差", L"服务差"}},
+        {DialogMode::OrderQuery, {L"订单", L"快递", L"发货", L"物流", L"到哪了", L"什么时候到", L"运单号", L"查一下"}},
+        {DialogMode::Refund, {L"退款", L"退货", L"退钱", L"不要了", L"取消订单", L"申请退", L"退款进度"}},
+        {DialogMode::Inquiry, {L"请问", L"想了解", L"咨询", L"怎么", L"如何", L"什么", L"多少", L"价格"}}
+    };
+
+    for (const auto& pair : keywords) {
+        for (const auto& keyword : pair.second) {
+            if (text.find(keyword) != std::wstring::npos) {
+                return pair.first;
+            }
+        }
+    }
+
+    return DialogMode::General;
+}
+
+std::vector<std::wstring> ContextManager::ExtractKeyInfo(const std::wstring& text) const {
+    std::vector<std::wstring> keyInfo;
+
+    // 提取订单号（格式：字母+数字，通常8-20位）
+    // 简单实现：查找连续的数字串
+    std::wstring currentNumber;
+    for (wchar_t c : text) {
+        if (std::iswdigit(c)) {
+            currentNumber += c;
+        } else {
+            if (currentNumber.size() >= 6) {
+                keyInfo.push_back(currentNumber);
+            }
+            currentNumber.clear();
+        }
+    }
+    if (currentNumber.size() >= 6) {
+        keyInfo.push_back(currentNumber);
+    }
+
+    return keyInfo;
+}
+
+std::vector<std::wstring> ContextManager::GetRecentMessages(int count) const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    std::vector<std::wstring> messages;
+    auto paragraphs = ExtractParagraphs(m_context.surroundingText);
+
+    // 取最后 count 条
+    int start = std::max(0, static_cast<int>(paragraphs.size()) - count);
+    for (int i = start; i < static_cast<int>(paragraphs.size()); ++i) {
+        if (!paragraphs[i].empty()) {
+            messages.push_back(paragraphs[i]);
+        }
+    }
+
+    return messages;
+}
+
 } // namespace qi

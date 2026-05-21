@@ -15,6 +15,13 @@ enum class KbCategory : uint8_t {
     Business,       // 商务
     Quotes,         // 语录
     CodeTalk,       // 代码话术
+    // 客服场景分类
+    FaqReply,       // FAQ 回复
+    ComplaintHandle, // 投诉处理
+    OrderInquiry,   // 订单咨询
+    ProductInfo,    // 产品咨询
+    ShippingInfo,   // 物流信息
+    RefundProcess,  // 退款流程
     CategoryCount
 };
 
@@ -65,6 +72,14 @@ public:
 
     // 关键词精准匹配
     std::vector<KbResult> KeywordSearch(const std::wstring& keywords, int maxResults = 10);
+
+    // 混合检索（语义+关键词组合）
+    std::vector<KbResult> HybridSearch(
+        const std::wstring& query,
+        int maxResults = 5,
+        KbCategory filter = KbCategory::General,
+        float semanticWeight = 0.7f,
+        float keywordWeight = 0.3f);
 
     // ── 管理 ──
     bool DeleteEntry(int64_t id);

@@ -57,6 +57,24 @@ public:
     void SetChineseMode(bool chinese);
     void SetFullWidthMode(bool fullWidth);
 
+    // ── 客服场景上下文 ──
+    // 提取对话上下文（用于客服建议）
+    std::wstring ExtractConversationContext(int maxChars = 500) const;
+    // 识别对话模式
+    enum class DialogMode : uint8_t {
+        Unknown = 0,
+        Inquiry,        // 咨询
+        Complaint,      // 投诉
+        OrderQuery,     // 订单查询
+        Refund,         // 退款
+        General         // 一般对话
+    };
+    DialogMode DetectDialogMode(const std::wstring& text) const;
+    // 提取关键信息（订单号、日期等）
+    std::vector<std::wstring> ExtractKeyInfo(const std::wstring& text) const;
+    // 获取最近N条对话
+    std::vector<std::wstring> GetRecentMessages(int count = 5) const;
+
 private:
     ContextManager();
     ~ContextManager();

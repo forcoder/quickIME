@@ -23,12 +23,17 @@ struct CandidateItemEqual {
 struct CandidateItemComparator {
     int GetCategoryPriority(CandidateCategory category) const {
         switch (category) {
-            case CandidateCategory::Word:       return 100; // 普通词汇
-            case CandidateCategory::AI:         return 90;  // AI生成
-            case CandidateCategory::Knowledge: return 80;  // 知识库
-            case CandidateCategory::Frequent:   return 70;  // 高频词
-            case CandidateCategory::Recent:     return 60;  // 最近使用
-            default:                            return 50;  // 其他
+            case CandidateCategory::WubiNormal:     return 100; // 普通五笔词库（最高优先）
+            case CandidateCategory::WubiCustom:     return 95;  // 自定义词库
+            case CandidateCategory::Frequent:       return 85;  // 高频词
+            case CandidateCategory::Recent:         return 80;  // 最近使用
+            case CandidateCategory::FaqReply:       return 75;  // FAQ 回复（客服场景优先）
+            case CandidateCategory::QuickReply:     return 73;  // 快捷回复
+            case CandidateCategory::WorkPhrase:     return 70;  // 工作话术
+            case CandidateCategory::KnowledgeBase:  return 65;  // 知识库
+            case CandidateCategory::AISuggestion:   return 60;  // AI智能建议
+            case CandidateCategory::AIContextAware: return 55;  // AI上下文感知
+            default:                                return 50;  // 其他
         }
     }
 
@@ -394,12 +399,17 @@ void CandidateManager::DeduplicateAndSort(std::vector<CandidateItem>& items) {
 
 int CandidateManager::GetCategoryPriority(CandidateCategory category) const {
     switch (category) {
-        case CandidateCategory::Word:       return 100; // 普通词汇
-        case CandidateCategory::AI:         return 90;  // AI生成
-        case CandidateCategory::Knowledge: return 80;  // 知识库
-        case CandidateCategory::Frequent:   return 70;  // 高频词
-        case CandidateCategory::Recent:     return 60;  // 最近使用
-        default:                            return 50;  // 其他
+        case CandidateCategory::WubiNormal:     return 100; // 普通五笔词库
+        case CandidateCategory::WubiCustom:     return 95;  // 自定义词库
+        case CandidateCategory::Frequent:       return 85;  // 高频词
+        case CandidateCategory::Recent:         return 80;  // 最近使用
+        case CandidateCategory::FaqReply:       return 75;  // FAQ 回复
+        case CandidateCategory::QuickReply:     return 73;  // 快捷回复
+        case CandidateCategory::WorkPhrase:     return 70;  // 工作话术
+        case CandidateCategory::KnowledgeBase:  return 65;  // 知识库
+        case CandidateCategory::AISuggestion:   return 60;  // AI智能建议
+        case CandidateCategory::AIContextAware: return 55;  // AI上下文感知
+        default:                                return 50;
     }
 }
 
@@ -410,11 +420,29 @@ std::wstring CandidateManager::FormatDisplayText(const CandidateItem& item) cons
         // 添加分类标签
         std::wstring tag;
         switch (item.category) {
-            case CandidateCategory::AI:
+            case CandidateCategory::WubiNormal:
+                tag = L"";
+                break;
+            case CandidateCategory::WubiCustom:
+                tag = L"[自]";
+                break;
+            case CandidateCategory::KnowledgeBase:
+                tag = L"[知]";
+                break;
+            case CandidateCategory::FaqReply:
+                tag = L"[FAQ]";
+                break;
+            case CandidateCategory::WorkPhrase:
+                tag = L"[话术]";
+                break;
+            case CandidateCategory::QuickReply:
+                tag = L"[快捷]";
+                break;
+            case CandidateCategory::AISuggestion:
                 tag = L"[AI]";
                 break;
-            case CandidateCategory::Knowledge:
-                tag = L"[知]";
+            case CandidateCategory::AIContextAware:
+                tag = L"[AI+]";
                 break;
             case CandidateCategory::Frequent:
                 tag = L"[频]";
@@ -496,11 +524,26 @@ void CandidateManager::DrawCategoryTag(HDC hdc, const RECT& rcTag,
     // 绘制标签文本
     std::wstring tagText;
     switch (category) {
-        case CandidateCategory::AI:
+        case CandidateCategory::WubiCustom:
+            tagText = L"自";
+            break;
+        case CandidateCategory::KnowledgeBase:
+            tagText = L"知";
+            break;
+        case CandidateCategory::FaqReply:
+            tagText = L"FAQ";
+            break;
+        case CandidateCategory::WorkPhrase:
+            tagText = L"话";
+            break;
+        case CandidateCategory::QuickReply:
+            tagText = L"快";
+            break;
+        case CandidateCategory::AISuggestion:
             tagText = L"AI";
             break;
-        case CandidateCategory::Knowledge:
-            tagText = L"知";
+        case CandidateCategory::AIContextAware:
+            tagText = L"AI+";
             break;
         case CandidateCategory::Frequent:
             tagText = L"频";

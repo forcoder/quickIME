@@ -103,6 +103,7 @@ HRESULT KeyHandler::OnKeyDown(WPARAM wParam, LPARAM lParam, BOOL* pfEaten)
     // ── 更新修饰键状态 ──
     if (wParam == VK_SHIFT) m_state.isShiftDown = true;
     if (wParam == VK_CONTROL) m_state.isCtrlDown = true;
+    if (wParam == VK_MENU) m_state.isAltDown = true;
 
     // ── 英文模式：只处理切换键 ──
     if (!m_state.isChineseMode)
@@ -173,6 +174,10 @@ HRESULT KeyHandler::OnKeyUp(WPARAM wParam, LPARAM lParam, BOOL* pfEaten)
     if (wParam == VK_CONTROL)
     {
         m_state.isCtrlDown = false;
+    }
+    if (wParam == VK_MENU)
+    {
+        m_state.isAltDown = false;
     }
 
     return S_OK;
@@ -446,6 +451,76 @@ wchar_t KeyHandler::GetChinesePunctuation(wchar_t ch) const
         return it->second;
     }
     return ch;
+}
+
+// ── 客服场景处理实现 ──
+
+HRESULT KeyHandler::HandleCSModeKey(WPARAM wParam, BOOL* pfEaten) {
+    if (!pfEaten) return E_INVALIDARG;
+    *pfEaten = FALSE;
+
+    // Alt+1~9: 快速选择建议
+    if (m_state.isAltDown && wParam >= '1' && wParam <= '9') {
+        // TODO: 从候选栏获取对应索引的建议并发送
+        *pfEaten = TRUE;
+        return S_OK;
+    }
+
+    // Alt+S: 发送当前选中的建议
+    if (m_state.isAltDown && (wParam == 'S' || wParam == 's')) {
+        // TODO: 发送当前选中的建议到剪贴板/输入框
+        *pfEaten = TRUE;
+        return S_OK;
+    }
+
+    // Alt+R: 刷新建议
+    if (m_state.isAltDown && (wParam == 'R' || wParam == 'r')) {
+        // TODO: 触发知识库+AI建议刷新
+        *pfEaten = TRUE;
+        return S_OK;
+    }
+
+    return S_OK;
+}
+
+HRESULT KeyHandler::SendSuggestionToClipboard(const std::wstring& text) {
+    if (text.empty()) return E_INVALIDARG;
+
+    // 打开剪贴板
+    if (!OpenClipboard(nullptr)) return E_FAIL;
+
+    // 清空剪贴板
+    EmptyClipboard();
+
+    // 分配全局内存
+    size_t size = (text.size() + 1) * sizeof(wchar_t);
+    HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, size);
+    if (!hGlobal) {
+        CloseClipboard();
+        return E_FAIL;
+    }
+
+    // 复制文本到全局内存
+    wchar_t* pGlobal = static_cast<wchar_t*>(GlobalLock(hGlobal));
+    if (pGlobal) {
+        wcscpy_s(pGlobal, text.size() + 1, text.c_str());
+        GlobalUnlock(hGlobal);
+    }
+
+    // 设置剪贴板数据
+    SetClipboardData(CF_UNICODETEXT, hGlobal);
+    CloseClipboard();
+
+    return S_OK;
+}
+
+HRESULT KeyHandler::TriggerSuggestions(const std::wstring& context) {
+    // TODO: 调用知识库检索和AI推理生成建议
+    // 1. 从上下文提取客户消息
+    // 2. 调用知识库 HybridSearch
+    // 3. 调用 AI GenerateCustomerServiceReply
+    // 4. 将结果推送到候选栏
+    return S_OK;
 }
 
 } // namespace ime

@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <chrono>
+#include <functional>
 
 namespace qi::ai {
 
@@ -13,6 +14,12 @@ enum class AISuggestionType : uint8_t {
     WorkPhrase,         // 工作话术
     DailyExpression,    // 日常用语
     ProfessionalText,   // 专业文案
+    // 客服场景类型
+    CustomerService,    // 客服回复
+    FaqReply,          // FAQ 回复
+    ComplaintHandle,   // 投诉处理
+    OrderInquiry,      // 订单咨询
+    RefundProcess,     // 退款流程
     CategoryCount
 };
 
@@ -35,6 +42,9 @@ struct PromptTemplate {
     int maxTokens;                  // 最大token数
     float temperature;              // 温度参数
 };
+
+// 流式输出回调类型
+using StreamCallback = std::function<void(const std::wstring& token)>;
 
 class InferenceEngine {
 public:
@@ -72,6 +82,50 @@ public:
         const std::wstring& scenario,
         int count = 3);
 
+    // ── 客服场景推理 ──
+    // 生成客服回复建议
+    std::vector<AISuggestion> GenerateCustomerServiceReply(
+        const std::wstring& customerMessage,
+        const std::wstring& context,
+        int count = 3);
+
+    // 生成 FAQ 回复
+    std::vector<AISuggestion> GenerateFaqReply(
+        const std::wstring& question,
+        const std::wstring& kbMatch,
+        int count = 3);
+
+    // 生成投诉处理回复
+    std::vector<AISuggestion> GenerateComplaintResponse(
+        const std::wstring& complaint,
+        const std::wstring& context,
+        int count = 3);
+
+    // 生成订单咨询回复
+    std::vector<AISuggestion> GenerateOrderInquiryReply(
+        const std::wstring& inquiry,
+        int count = 3);
+
+    // 生成退款流程回复
+    std::vector<AISuggestion> GenerateRefundResponse(
+        const std::wstring& refundRequest,
+        int count = 3);
+
+    // ── 流式输出 ──
+    // 流式生成（逐token回调）
+    bool GenerateStreaming(
+        const std::wstring& context,
+        const std::wstring& userInput,
+        AISuggestionType type,
+        StreamCallback callback);
+
+    // 流式客服回复
+    bool GenerateCSStreaming(
+        const std::wstring& customerMessage,
+        const std::wstring& context,
+        AISuggestionType csType,
+        StreamCallback callback);
+
 private:
     struct Impl;
     std::unique_ptr<Impl> m_impl;
@@ -85,13 +139,31 @@ private:
         const std::wstring& userInput,
         AISuggestionType type) const;
 
+    // 构建客服场景提示
+    std::wstring BuildCSPrompt(
+        const std::wstring& message,
+        const std::wstring& context,
+        AISuggestionType csType) const;
+
     // 调用底层模型推理
     std::string Inference(const std::wstring& prompt, int maxTokens);
+
+    // 流式推理
+    bool InferenceStreaming(
+        const std::wstring& prompt,
+        int maxTokens,
+        StreamCallback callback);
 
     // 后处理（清理、过滤、截断）
     std::wstring PostprocessOutput(const std::wstring& rawOutput, AISuggestionType type) const;
 
     // 置信度评估
     float EvaluateConfidence(const std::wstring& output) const;
+
+    // 辅助生成函数
+    AISuggestion GenerateShortReply(const std::wstring& context, const std::wstring& userInput);
+    AISuggestion GenerateWorkPhrase(const std::wstring& context, const std::wstring& userInput);
+    AISuggestion GenerateDailyExpression(const std::wstring& context, const std::wstring& userInput);
+    AISuggestion GenerateProfessionalText(const std::wstring& context, const std::wstring& userInput);
 };
 } // namespace qi::ai

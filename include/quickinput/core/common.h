@@ -31,10 +31,24 @@
 
 // ── Candidate categories ──
 enum class CandidateCategory : uint8_t {
+    // 五笔相关
     WubiNormal = 0,     // 普通五笔词库
     WubiCustom,         // 自定义词库
+
+    // 知识库
     KnowledgeBase,      // 知识库内容
-    AISuggestion,       // AI智能建议
+    FaqReply,          // FAQ 回复
+    WorkPhrase,        // 工作话术
+    QuickReply,        // 快捷回复
+
+    // AI 相关
+    AISuggestion,      // AI智能建议
+    AIContextAware,    // AI上下文感知建议
+
+    // 通用分类
+    Frequent,          // 高频词
+    Recent,            // 最近使用
+
     CategoryCount
 };
 

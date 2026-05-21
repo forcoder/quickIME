@@ -71,31 +71,26 @@ bool InferenceEngine::LoadModel(const std::wstring& modelPath) {
         return false;
     }
 
-    // 模拟模型加载过程
+    // Initialize llama.cpp context
+    m_impl->llama = std::make_unique<LlamaContext>();
+    LlamaParams params;
+    params.nCtx = 2048;
+    params.nThreads = 4;
+    params.n_gpu_layers = 0;
+    params.temperature = 0.7f;
+    params.maxTokens = 256;
+    params.batchSize = 512;
+    params.topP = 0.95f;
+    params.topK = 40;
+
+    if (!m_impl->llama->LoadModel(modelPath, params)) {
+        std::wcerr << L"[InferenceEngine] llama.cpp model load failed" << std::endl;
+        m_impl->llama.reset();
+        return false;
+    }
+
     m_impl->currentModelId = std::hash<std::wstring>{}(modelPath);
     m_impl->isModelLoaded = true;
-    m_impl->lastUsed = std::chrono::steady_clock::now();
-
-    std::wcout << L"模型加载成功: " << modelPath << std::endl;
-    std::wcout << L"类型: " <<
-        (modelType == ModelType::LlamaCpp ? L"Llama.cpp (.gguf)" :
-         modelType == ModelType::ONNXRuntime ? L"ONNX Runtime (.onnx)" : L"未知") << std::endl;
-    std::wcout << L"大小: " << ModelLoader::FormatMemorySize(result.modelInfo.memorySize) << std::endl;
-
-    return true;
-}
-
-void InferenceEngine::UnloadModel() {
-    if (m_impl->isModelLoaded) {
-        std::wcout << L"模型已卸载" << std::endl;
-        m_impl->isModelLoaded = false;
-        m_impl->currentModelId = 0;
-    }
-}
-
-bool InferenceEngine::IsModelLoaded() const {
-    return m_impl->isModelLoaded && m_impl->isInitialized;
-}
 
 std::vector<AISuggestion> InferenceEngine::GenerateSuggestions(
     const std::wstring& context,
@@ -259,8 +254,6 @@ std::vector<AISuggestion> InferenceEngine::GenerateDailyExpressions(
 PromptTemplate InferenceEngine::GetTemplate(AISuggestionType type) const {
     return PromptTemplateManager::GetTemplate(type);
 }
-
-std::wstring InferenceEngine::BuildPrompt(
     const std::wstring& context,
     const std::wstring& userInput,
     AISuggestionType type) const {
@@ -364,6 +357,171 @@ AISuggestion InferenceEngine::GenerateProfessionalText(const std::wstring& conte
     suggestion.modelId = m_impl->currentModelId;
     suggestion.timestamp = std::chrono::steady_clock::now();
     return suggestion;
+}
+
+// ── 客服场景推理实现 ──
+
+std::vector<AISuggestion> InferenceEngine::GenerateCustomerServiceReply(
+    const std::wstring& customerMessage,
+    const std::wstring& context,
+    int count) {
+
+    if (count <= 0 || count > 3) count = 3;
+
+    std::vector<AISuggestion> replies;
+
+    // 客服回复模板库
+    static const std::vector<std::wstring> csTemplates = {
+        L"您好，感谢您的咨询，我来为您查询一下。",
+        L"非常理解您的情况，我们会尽快为您处理。",
+        L"您好，关于您的问题，建议您尝试以下方法：",
+        L"感谢您的反馈，我们会认真对待您的意见。",
+        L"您好，我已经记录了您的问题，会马上为您核实。",
+        L"非常抱歉给您带来不便，我们正在积极处理中。",
+        L"您好，根据您描述的情况，建议您：",
+        L"感谢您的耐心等候，您的诉求我们已经收到。",
+        L"您好，这个问题我来帮您解答：",
+        L"理解您的心情，我们会竭尽全力为您解决问题。"
+    };
+
+    for (int i = 0; i < count && i < static_cast<int>(csTemplates.size()); ++i) {
+        AISuggestion suggestion;
+        suggestion.text = csTemplates[i];
+        suggestion.type = AISuggestionType::CustomerService;
+        suggestion.confidence = 0.85f - (i * 0.05f);
+        suggestion.modelId = m_impl->currentModelId;
+        suggestion.timestamp = std::chrono::steady_clock::now();
+        replies.push_back(suggestion);
+    }
+
+    return replies;
+}
+
+std::vector<AISuggestion> InferenceEngine::GenerateFaqReply(
+    const std::wstring& question,
+    const std::wstring& kbMatch,
+    int count) {
+
+    if (count <= 0 || count > 3) count = 3;
+
+    std::vector<AISuggestion> replies;
+
+    // 基于知识库匹配生成回复
+    if (!kbMatch.empty()) {
+        AISuggestion suggestion;
+        suggestion.text = kbMatch.substr(0, 40); // 截断到40字
+        suggestion.type = AISuggestionType::FaqReply;
+        suggestion.confidence = 0.95f;
+        suggestion.modelId = m_impl->currentModelId;
+        suggestion.timestamp = std::chrono::steady_clock::now();
+        replies.push_back(suggestion);
+    }
+
+    // 补充通用FAQ回复
+    static const std::vector<std::wstring> faqReplies = {
+        L"您可以查看帮助中心获取更多信息。",
+        L"如需进一步帮助，请随时联系我们。",
+        L"建议您参考产品使用说明进行操作。",
+        L"您可以拨打客服热线获取更详细的指导。"
+    };
+
+    for (int i = 0; i < count - static_cast<int>(replies.size()) && i < static_cast<int>(faqReplies.size()); ++i) {
+        AISuggestion suggestion;
+        suggestion.text = faqReplies[i];
+        suggestion.type = AISuggestionType::FaqReply;
+        suggestion.confidence = 0.75f - (i * 0.05f);
+        suggestion.modelId = m_impl->currentModelId;
+        suggestion.timestamp = std::chrono::steady_clock::now();
+        replies.push_back(suggestion);
+    }
+
+    if (replies.size() > static_cast<size_t>(count)) {
+        replies.resize(count);
+    }
+
+    return replies;
+}
+
+std::vector<AISuggestion> InferenceEngine::GenerateComplaintResponse(
+    const std::wstring& complaint,
+    const std::wstring& context,
+    int count) {
+
+    if (count <= 0 || count > 3) count = 3;
+
+    std::vector<AISuggestion> replies;
+
+    static const std::vector<std::wstring> complaintReplies = {
+        L"非常抱歉给您带来不好的体验，我们会认真对待您的投诉并尽快处理。",
+        L"感谢您的反馈，我们对此深表歉意，会立即核实情况并改进。",
+        L"理解您的不满，我们承诺会在24小时内给您一个满意的答复。"
+    };
+
+    for (int i = 0; i < count && i < static_cast<int>(complaintReplies.size()); ++i) {
+        AISuggestion suggestion;
+        suggestion.text = complaintReplies[i];
+        suggestion.type = AISuggestionType::ComplaintHandle;
+        suggestion.confidence = 0.88f - (i * 0.04f);
+        suggestion.modelId = m_impl->currentModelId;
+        suggestion.timestamp = std::chrono::steady_clock::now();
+        replies.push_back(suggestion);
+    }
+
+    return replies;
+}
+
+std::vector<AISuggestion> InferenceEngine::GenerateOrderInquiryReply(
+    const std::wstring& inquiry,
+    int count) {
+
+    if (count <= 0 || count > 3) count = 3;
+
+    std::vector<AISuggestion> replies;
+
+    static const std::vector<std::wstring> orderReplies = {
+        L"您好，请提供订单号，我来为您查询订单状态。",
+        L"您好，您可以在'我的订单'中查看最新的物流信息。",
+        L"您好，您的订单正在处理中，预计3-5个工作日内发货。"
+    };
+
+    for (int i = 0; i < count && i < static_cast<int>(orderReplies.size()); ++i) {
+        AISuggestion suggestion;
+        suggestion.text = orderReplies[i];
+        suggestion.type = AISuggestionType::OrderInquiry;
+        suggestion.confidence = 0.82f - (i * 0.05f);
+        suggestion.modelId = m_impl->currentModelId;
+        suggestion.timestamp = std::chrono::steady_clock::now();
+        replies.push_back(suggestion);
+    }
+
+    return replies;
+}
+
+std::vector<AISuggestion> InferenceEngine::GenerateRefundResponse(
+    const std::wstring& refundRequest,
+    int count) {
+
+    if (count <= 0 || count > 3) count = 3;
+
+    std::vector<AISuggestion> replies;
+
+    static const std::vector<std::wstring> refundReplies = {
+        L"您好，退款申请已受理，预计3-7个工作日到账，请耐心等待。",
+        L"您好，退款流程已启动，您可以在订单详情中查看退款进度。",
+        L"您好，非常抱歉给您带来不便，退款将在审核通过后原路返回。"
+    };
+
+    for (int i = 0; i < count && i < static_cast<int>(refundReplies.size()); ++i) {
+        AISuggestion suggestion;
+        suggestion.text = refundReplies[i];
+        suggestion.type = AISuggestionType::RefundProcess;
+        suggestion.confidence = 0.86f - (i * 0.04f);
+        suggestion.modelId = m_impl->currentModelId;
+        suggestion.timestamp = std::chrono::steady_clock::now();
+        replies.push_back(suggestion);
+    }
+
+    return replies;
 }
 
 } // namespace qi::ai

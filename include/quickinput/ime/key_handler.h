@@ -37,6 +37,8 @@ struct KeyState {
     bool isPunctuationMode; ///< 中文/英文标点模式
     bool isShiftDown;       ///< Shift 键是否按下
     bool isCtrlDown;        ///< Ctrl 键是否按下
+    bool isAltDown;         ///< Alt 键是否按下
+    bool csMode;            ///< 客服模式开关
 
     KeyState()
         : isChineseMode(true)
@@ -44,6 +46,8 @@ struct KeyState {
         , isPunctuationMode(true)
         , isShiftDown(false)
         , isCtrlDown(false)
+        , isAltDown(false)
+        , csMode(false)
     {}
 };
 
@@ -117,6 +121,16 @@ public:
     void ToggleChineseMode();
     void ToggleFullWidth();
     void TogglePunctuationMode();
+    void ToggleCSMode() { m_state.csMode = !m_state.csMode; }
+    bool IsCSMode() const { return m_state.csMode; }
+
+    // ── 客服场景处理 ──
+    // 处理客服模式快捷键
+    HRESULT HandleCSModeKey(WPARAM wParam, BOOL* pfEaten);
+    // 发送建议到剪贴板
+    HRESULT SendSuggestionToClipboard(const std::wstring& text);
+    // 触发知识库+AI建议
+    HRESULT TriggerSuggestions(const std::wstring& context);
 
 private:
     /**

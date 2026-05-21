@@ -57,6 +57,7 @@ file(GLOB_RECUR_SOURCES
     src/knowledge/*.cpp
     src/config/*.cpp
     src/utils/*.cpp
+    src/cs/*.cpp
 )
 
 if(QI_ENABLE_AI)

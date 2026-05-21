@@ -29,6 +29,31 @@ struct CandidateStyle {
     bool         showCategoryTags;  // 显示分类标签
     std::wstring categoryTagFont;   // 标签字体
     int          tagFontSize;      // 标签字号
+
+    // 分类背景色（用于区分不同来源）
+    COLORREF     wubiBgColor;       // 五笔候选背景
+    COLORREF     knowledgeBgColor;  // 知识库背景
+    COLORREF     faqBgColor;       // FAQ回复背景
+    COLORREF     workPhraseBgColor; // 工作话术背景
+    COLORREF     quickReplyBgColor; // 快捷回复背景
+    COLORREF     aiBgColor;        // AI建议背景
+    COLORREF     frequentBgColor;  // 高频词背景
+
+    // 悬停预览设置
+    bool         enableHoverPreview;    // 启用悬停预览
+    int          hoverPreviewDelay;     // 悬停延迟（毫秒）
+    int          previewMaxWidth;       // 预览最大宽度
+    int          previewPadding;        // 预览内边距
+};
+
+// 候选来源分组（用于Tab切换）
+enum class CandidateSourceGroup : uint8_t {
+    All = 0,          // 显示全部
+    Wubi,             // 五笔候选
+    Knowledge,        // 知识库相关
+    AI,               // AI建议
+    CustomerService,   // 客服场景
+    GroupCount
 };
 
 // 候选栏状态
